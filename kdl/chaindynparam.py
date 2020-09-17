@@ -2,7 +2,6 @@ from .utils import *
 from .joint import JointType
 from .frame import Twist, dot
 from .rbi import Rotation, ArticulatedBodyInertia
-import PyKDL
 import numpy as np
 
 
@@ -85,61 +84,3 @@ def joint_list_to_kdl(q):
         q_kdl[i] = q_i
     return q_kdl
 
-class ChainDynParamPyKDL(object):
-    def __init__(self, chain, g=None):
-        self.chain = chain
-        self.nb_joints = self.chain.getNrOfJoints()
-        self.nb_segments = self.chain.getNrOfSegments()
-        self.g = 9.81 if g is None else g
-        self.Ic = [None]*self.nb_segments # list of tk.ArticulatedRigidBody
-        self.X = [None]*self.nb_segments # list of tk.Frame
-        self.S = [None]*self.nb_segments # list of tk.Twist
-
-    def inertia_matrix(self, q):
-        k = 0
-        self.H = np.zeros((self.nb_joints, self.nb_joints))
-        ## Sweep from root to leaf
-        for i in range(self.nb_segments):
-            segment_i = self.chain.getSegment(i)
-
-            ## Collect RigidBodyInertia
-            self.Ic[i] = segment_i.getInertia()
-            if segment_i.getJoint().getType() != PyKDL.Joint.JointType(8): ## in cpp it says fixed, is it the same?
-                q_ = q[k]
-                k +=1
-            else:
-                q_ = 0.
-
-            self.X[i] = segment_i.pose(q_) # type: Frame
-            self.S[i] = self.X[i].M.Inverse(segment_i.twist(q_, 1.0)) # type: Twist
-
-        ## Sweep from leaf to root
-        k = self.nb_joints-1
-
-        for i in range(self.nb_segments-1, -1, -1):
-            segment_i = self.chain.getSegment(i)
-            if i!= 0:
-                # pass
-                ## assumption that previous segment is parent
-                self.Ic[i - 1] = self.Ic[i - 1] + self.X[i]*self.Ic[i]
-            F = self.Ic[i]*self.S[i]
-
-            if segment_i.getJoint().getType() != PyKDL.Joint.JointType(8): ## in cpp it says fixed, is it the same?
-                H_kk = PyKDL.dot(self.S[i], F) #+ segment_i.joint.inertia   # add joint inertia
-                self.H[k,k] = H_kk
-
-                j=k # counter variable for the joints
-                l=i # counter variable for the segments
-
-                while l!=0: # go from leaf to root starting at i
-                    #assumption that previous segment is parent
-                    F = self.X[l]*F #calculate the unit force (cfr S) for every segment: F[l-1]=X[l]*F[l]
-                    l += -1 # go down a segment
-                    if self.chain.getSegment(i).getJoint().getType() != PyKDL.Joint.JointType(8):
-                        j += -1
-                        H_kj = PyKDL.dot(F, self.S[l])
-                        self.H[k,j] = H_kj # here you actually match a certain not fixed joint with a segment
-                        self.H[j,k] = H_kj
-
-                k += -1 #this if-loop should be repeated nb_joint times (k=nb_joint-1 to k=0)
-        return self.H
