@@ -13,3 +13,4 @@ Run the Vibration Analysis notebook.
  * pinocchio 2.4.7
  * transforms3d 0.3.1
  * trimesh 3.6.0
+ * pyscreenshot 2.2
