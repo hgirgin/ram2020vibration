@@ -17,7 +17,7 @@
       </inertial>
     </link>
 
-    <link name="support">
+    <link concave="yes" name="support">
         <visual>
             <geometry>
                 <mesh filename="support.obj"/>
@@ -26,7 +26,7 @@
         </visual>
         <collision>
             <geometry>
-                <mesh filename="support.obj"/>
+                <mesh filename="support_concave.obj"/>
             </geometry>
         </collision>
     </link>

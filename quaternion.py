@@ -105,7 +105,7 @@ class Quaternion(object):
         :param other: point on the manifold, Quaternion object
         :return: distance: manifold distance between x and y
         """
-        dot = tf.reduce_sum(self.q * other.q, -1)
+        dot = tf.reduce_sum(self.q * other.q , -1)
         dot = tf.clip_by_value(dot, -1+1e-4, 1-1e-4)
         # dot = tf.math.abs(dot)
         return tf.math.acos(dot)
