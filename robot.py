@@ -2,11 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from IPython.display import clear_output
 import networkx as nx
-
 import matplotlib
 import matplotlib.patches as patches
-
-from costs import *
+from utils import *
 
 class Robot():
     def __init__(self,l1, l2):

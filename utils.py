@@ -2,10 +2,10 @@ from scipy.spatial.transform import Rotation as R
 
 import pybullet as p
 import numpy as np
-import pinocchio as pin
-import transforms3d
 import time
 import pyscreenshot as ImageGrab
+import pinocchio as pin
+import transforms3d
 
 def rotvec2mat(x):
     return R.as_matrix(R.from_rotvec(x))
@@ -19,32 +19,6 @@ def save_screenshot(x,y,w,h,file_name, to_show='False'):
     # save to file
     im.save(file_name)
     return im
-
-def get_pb_config(q):
-    """
-    Convert tf's format of 'joint angles + base position' to
-    'base_pos + base_ori + joint_angles' according to pybullet order
-    """
-    joint_angles = q[:28]
-    #qnew = np.concatenate([q[28:31], euler2quat(q[-3:]),
-    #qnew = np.concatenate([np.array([0,0,q[28]]), euler2quat(q[-3:]),
-    qnew = np.concatenate([q[28:31], euler2quat(np.array([0,0,0])),
-                           joint_angles[-6:], joint_angles[-12:-6], 
-                          joint_angles[:2], joint_angles[9:16], 
-                          joint_angles[2:9]])
-    return qnew
-
-def get_tf_config(q):
-    """
-    Convert 'base_pos + base_ori + joint_angles' according to pybullet order
-    to tf's format of 'joint angles + base position'
-    
-    """
-    joint_angles = q[7:]
-    qnew = np.concatenate([joint_angles[12:14], joint_angles[-7:], 
-                          joint_angles[-14:-7], joint_angles[6:12], 
-                          joint_angles[:6], q[:3]])
-    return qnew
 
 
 def normalize(x):
@@ -84,18 +58,6 @@ def get_joint_limits(robot_id, indices):
     limits = np.vstack([lower_limits, upper_limits])
     return limits
 
-def computeJacobian(rmodel,rdata,ee_frame_id,q):
-    pin.forwardKinematics(rmodel,rdata,q)
-    pin.updateFramePlacements(rmodel,rdata)
-    pin.computeJointJacobians(rmodel, rdata, q)
-    J = pin.getFrameJacobian(rmodel, rdata,ee_frame_id, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)
-    return J[:,:7]
-
-def computePose(rmodel, rdata, ee_frame_id, q):
-    pin.forwardKinematics(rmodel, rdata, q)
-    pin.updateFramePlacements(rmodel, rdata)
-    pos, ori = rdata.oMf[ee_frame_id].translation, rdata.oMf[ee_frame_id].rotation
-    return pos,ori
     
 def check_joint_limits(q, joint_limits):
     """
@@ -118,9 +80,6 @@ def calc_dist_limit(q, joint_limits):
     error = lower_error-upper_error
     return error
     
-def mat2euler(rot, axes = 'rzyx'):
-    return np.array(transforms3d.euler.mat2euler(rot, axes = axes))
-
 def euler2quat(rpy, axes='sxyz'):
     #euler sxyz: used by Manu's codes
     return rectify_quat(transforms3d.euler.euler2quat(*rpy, axes=axes))
@@ -130,9 +89,23 @@ def rectify_quat(quat):
     quat_new = np.concatenate([quat[1:], quat[0:1]])
     return quat_new
 
-def mat2w(rot):
-    rot_aa = pin.AngleAxis(rot)
-    return rot_aa.angle*rot_aa.axis
+def w2quat(q):
+    angle = np.linalg.norm(q)
+    if abs(angle) < 1e-7:
+        ax = np.array([1,0,0])
+    else:
+        ax, angle = normalize(q), np.linalg.norm(q)
+    w = p.getQuaternionFromAxisAngle(ax, angle)
+    return np.array(w)
+
+def w2mat(w):
+    angle = np.linalg.norm(w)
+    if abs(angle) < 1e-7:
+        ax = np.array([1,0,0])
+    else:
+        ax, angle = w/angle, angle
+    R = pin.AngleAxis.toRotationMatrix(pin.AngleAxis(angle, ax))
+    return R
 
 def w2quat(q):
     angle = np.linalg.norm(q)
@@ -146,15 +119,6 @@ def w2quat(q):
 def quat2w(q):
     ax, angle = p.getAxisAngleFromQuaternion(q)
     return np.array(ax)*angle
-
-def w2mat(w):
-    angle = np.linalg.norm(w)
-    if abs(angle) < 1e-7:
-        ax = np.array([1,0,0])
-    else:
-        ax, angle = w/angle, angle
-    R = pin.AngleAxis.toRotationMatrix(pin.AngleAxis(angle, ax))
-    return R
 
 def get_link_base(robot_id, frame_id):
     '''
