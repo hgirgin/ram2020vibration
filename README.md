@@ -1,4 +1,4 @@
-The code for the submitted RAM2020 Special Issue paper "Optimization of robot configurations for motion planning in industrial riveting."
+The code for the accepter ICAR2021 paper "Optimization of robot configurations for motion planning in industrial riveting."
 
 Run the Vibration Analysis notebook.
 
